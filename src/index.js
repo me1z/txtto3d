@@ -14,12 +14,11 @@ document.body.appendChild(renderer.domElement);
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const controls = new OrbitControls(camera, renderer.domElement);
 
-const pixelGeometry = new THREE.CircleGeometry(0.005, 32); // Радиус 0.1
-const pixelMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff }); // Синий цвет
+const pixelGeometry = new THREE.CircleGeometry(0.005, 32);
+const pixelMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
 const pixel = new THREE.Mesh(pixelGeometry, pixelMaterial);
-pixel.position.set(0, 0, 0); // Позиция в центре камеры
+pixel.position.set(0, 0, 0);
 
-// Добавление пикселя в сцену
 scene.add(pixel);
 
 // Группа для кубов
@@ -27,20 +26,19 @@ const pointsGroup = new THREE.Group();
 scene.add(pointsGroup);
 
 // Элемент для загрузки файла
-const fileInput = document.getElementById('fileInput');
+const fileInput = document.createElement('input');
 fileInput.type = 'file';
-fileInput.accept = '.txt'; // Ограничить выбор файлов только текстовыми
-fileInput.style.display = 'none'; // Скрыть стандартный input
+fileInput.accept = '.txt';
+fileInput.style.display = 'none';
+
+document.body.appendChild(fileInput);
 
 // Кнопка для выбора файла
 const button = document.createElement('button');
 button.innerText = 'Загрузить файл с точками';
 document.body.appendChild(button);
-document.body.appendChild(fileInput);
 
-
-const loadButton = document.getElementById('loadButton');
-loadButton.addEventListener('click', () => {
+button.addEventListener('click', () => {
     fileInput.click(); // Имитация клика на input
 });
 
@@ -67,14 +65,13 @@ function loadPointsFromString(data) {
     pointsGroup.clear(); // Очистка предыдущих кубов
 
     pointsData.forEach(([number, name, z, x, y]) => {
-        const geometry = new THREE.BoxGeometry(1, 1, 1); // Размер куба
-        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Красный цвет
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
         const cube = new THREE.Mesh(geometry, material);
 
-        // Установка позиции куба
         cube.position.set(parseFloat(x), parseFloat(y), parseFloat(z));
-        cube.userData = { number, name }; // Сохранение номера и названия куба в userData
-        pointsGroup.add(cube); // Добавление куба в группу
+        cube.userData = { number, name };
+        pointsGroup.add(cube);
     });
 
     const center = new THREE.Vector3();
@@ -85,9 +82,8 @@ function loadPointsFromString(data) {
     });
     center.divideScalar(pointsGroup.children.length);
 
-    // Установка камеры в центр точек
     camera.position.copy(center);
-    camera.position.y += 10; // Поднимаем камеру немного выше
+    camera.position.y += 10;
     camera.lookAt(center);
     controls.target.copy(center);
     controls.update();
@@ -119,7 +115,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
     pixel.position.copy(camera.position);
-    pixel.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(2)); // Смещение вперед от камеры
+    pixel.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(2));
     pixel.lookAt(camera.position);
     renderer.render(scene, camera);
 }
