@@ -26,38 +26,46 @@ scene.add(pixel);
 const pointsGroup = new THREE.Group();
 scene.add(pointsGroup);
 
-function createTextSprite(message) {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    context.font = '24px Arial';
-    context.fillStyle = 'black';
-    context.fillText(message, 0, 30);
-    
-    const texture = new THREE.Texture(canvas);
-    texture.needsUpdate = true;
+// Элемент для загрузки файла
+const fileInput = document.getElementById('fileInput');
+fileInput.type = 'file';
+fileInput.accept = '.txt'; // Ограничить выбор файлов только текстовыми
+fileInput.style.display = 'none'; // Скрыть стандартный input
 
-    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
-    const sprite = new THREE.Sprite(spriteMaterial);
-    sprite.scale.set(2, 1, 1); // Установите размер спрайта
+// Кнопка для выбора файла
+const button = document.createElement('button');
+button.innerText = 'Загрузить файл с точками';
+document.body.appendChild(button);
+document.body.appendChild(fileInput);
 
-    return sprite;
+
+const loadButton = document.getElementById('loadButton');
+loadButton.addEventListener('click', () => {
+    fileInput.click(); // Имитация клика на input
+});
+
+fileInput.addEventListener('change', handleFileSelect);
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            loadPointsFromString(content);
+        };
+        reader.readAsText(file);
+    }
 }
 
-// Функция загрузки точек из файла
-async function loadPointsFromFile(url) {
-    const response = await fetch(url);
-    const data = await response.text();
-
+function loadPointsFromString(data) {
     const pointsData = data.split('\n').map(line => {
         const [number, x, y, z, name] = line.split(' ');
         return [number, name, parseFloat(y), parseFloat(x), parseFloat(z)];
     });
 
-    return pointsData;
-}
+    pointsGroup.clear(); // Очистка предыдущих кубов
 
-// Загрузка точек из файла
-loadPointsFromFile('./points.txt').then(pointsData => {
     pointsData.forEach(([number, name, z, x, y]) => {
         const geometry = new THREE.BoxGeometry(1, 1, 1); // Размер куба
         const material = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Красный цвет
@@ -66,12 +74,7 @@ loadPointsFromFile('./points.txt').then(pointsData => {
         // Установка позиции куба
         cube.position.set(parseFloat(x), parseFloat(y), parseFloat(z));
         cube.userData = { number, name }; // Сохранение номера и названия куба в userData
-
-        // Создание текстового спрайта
-        const label = createTextSprite(name);
-        label.position.set(x, y + 1.5, z); // Установка позиции текста над кубом
         pointsGroup.add(cube); // Добавление куба в группу
-        //pointsGroup.add(label);
     });
 
     const center = new THREE.Vector3();
@@ -88,7 +91,7 @@ loadPointsFromFile('./points.txt').then(pointsData => {
     camera.lookAt(center);
     controls.target.copy(center);
     controls.update();
-});
+}
 
 // Обработчик кликов
 const raycaster = new THREE.Raycaster();
@@ -118,12 +121,6 @@ function animate() {
     pixel.position.copy(camera.position);
     pixel.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(2)); // Смещение вперед от камеры
     pixel.lookAt(camera.position);
-
-    pointsGroup.children.forEach(child => {
-        if (child instanceof THREE.Sprite) {
-            child.lookAt(camera.position); // Поворот текста к камере
-        }
-    });
     renderer.render(scene, camera);
 }
 

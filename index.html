@@ -7,9 +7,18 @@
     <style>
         body { margin: 0; }
         canvas { display: block; }
+        #loadButton {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
+    <button id="loadButton">Загрузить файл с точками</button>
+    <input type="file" id="fileInput" style="display: none;" />
     <script src="bundle.js"></script>
 </body>
 </html>
