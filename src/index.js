@@ -14,11 +14,34 @@ document.body.appendChild(renderer.domElement);
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const controls = new OrbitControls(camera, renderer.domElement);
 
-// Материал для точек
-const material = new THREE.PointsMaterial({ color: 0xff0000, size: 0.5 }); // Установите размер точек меньше
+const pixelGeometry = new THREE.CircleGeometry(0.005, 32); // Радиус 0.1
+const pixelMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff }); // Синий цвет
+const pixel = new THREE.Mesh(pixelGeometry, pixelMaterial);
+pixel.position.set(0, 0, 0); // Позиция в центре камеры
 
-// Группа точек
+// Добавление пикселя в сцену
+scene.add(pixel);
+
+// Группа для кубов
 const pointsGroup = new THREE.Group();
+scene.add(pointsGroup);
+
+function createTextSprite(message) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    context.font = '24px Arial';
+    context.fillStyle = 'black';
+    context.fillText(message, 0, 30);
+    
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(2, 1, 1); // Установите размер спрайта
+
+    return sprite;
+}
 
 // Функция загрузки точек из файла
 async function loadPointsFromFile(url) {
@@ -26,8 +49,8 @@ async function loadPointsFromFile(url) {
     const data = await response.text();
 
     const pointsData = data.split('\n').map(line => {
-        const [number, x, y, z, name] = line.split(' '); // Изменено на пробелы
-        return [number, name, parseFloat(y), parseFloat(x), parseFloat(z)]; // Поменяли x и y местами
+        const [number, x, y, z, name] = line.split(' ');
+        return [number, name, parseFloat(y), parseFloat(x), parseFloat(z)];
     });
 
     return pointsData;
@@ -35,62 +58,54 @@ async function loadPointsFromFile(url) {
 
 // Загрузка точек из файла
 loadPointsFromFile('./points.txt').then(pointsData => {
-    // Массив для хранения координат
-    const positions = [];
+    pointsData.forEach(([number, name, z, x, y]) => {
+        const geometry = new THREE.BoxGeometry(1, 1, 1); // Размер куба
+        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Красный цвет
+        const cube = new THREE.Mesh(geometry, material);
 
-    // Создание точек
-    pointsData.forEach(([number, name, y, x, z]) => {
-        positions.push(new THREE.Vector3(x, y, z)); // Добавление координат в массив
+        // Установка позиции куба
+        cube.position.set(parseFloat(x), parseFloat(y), parseFloat(z));
+        cube.userData = { number, name }; // Сохранение номера и названия куба в userData
 
-        const geometry = new THREE.BufferGeometry();
-        const vertices = new Float32Array([x, y, z]);
-        geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-        const point = new THREE.Points(geometry, material);
-        point.userData = { number, name };  // Сохранение номера и названия точки в userData
-
-        pointsGroup.add(point);
+        // Создание текстового спрайта
+        const label = createTextSprite(name);
+        label.position.set(x, y + 1.5, z); // Установка позиции текста над кубом
+        pointsGroup.add(cube); // Добавление куба в группу
+        //pointsGroup.add(label);
     });
 
-    scene.add(pointsGroup);
-
-    // Рассчитываем центр точек
     const center = new THREE.Vector3();
-    positions.forEach(pos => {
-        center.add(pos);
+    pointsGroup.children.forEach(child => {
+        if (child instanceof THREE.Mesh) {
+            center.add(child.position);
+        }
     });
-    center.divideScalar(positions.length); // Находим среднее значение
+    center.divideScalar(pointsGroup.children.length);
 
     // Установка камеры в центр точек
-    camera.position.set(center.x, center.y + 500, center.z + 500); // Установить камеру чуть выше центра
-    camera.lookAt(center); // Направить камеру на центр
-
-    controls.target.copy(center); // Установка цели управления камеры
-    controls.update(); // Обновление управления
+    camera.position.copy(center);
+    camera.position.y += 10; // Поднимаем камеру немного выше
+    camera.lookAt(center);
+    controls.target.copy(center);
+    controls.update();
 });
-
-// Добавление осей для ориентации
-const axesHelper = new THREE.AxesHelper(100); // 100 — длина осей
-scene.add(axesHelper);
 
 // Обработчик кликов
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
 function onMouseClick(event) {
-    // Перевод координат мыши в нормализованные
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
     raycaster.setFromCamera(mouse, camera);
-
     const intersects = raycaster.intersectObjects(pointsGroup.children);
 
     if (intersects.length > 0) {
-        const point = intersects[0].object;
-        const { name } = point.userData;  // Извлечение имени
-        const position = point.position;
-        alert(`Вы кликнули на точку: ${name}\nПозиция: (x: ${position.x}, y: ${position.y}, z: ${position.z})`); // Показать название и позицию точки
+        const cube = intersects[0].object;
+        const { name } = cube.userData;
+        const position = cube.position;
+        alert(`Вы кликнули на куб: ${name}\nПозиция: (x: ${position.x}, y: ${position.y}, z: ${position.z})`);
     }
 }
 
@@ -100,6 +115,15 @@ window.addEventListener('click', onMouseClick);
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    pixel.position.copy(camera.position);
+    pixel.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(2)); // Смещение вперед от камеры
+    pixel.lookAt(camera.position);
+
+    pointsGroup.children.forEach(child => {
+        if (child instanceof THREE.Sprite) {
+            child.lookAt(camera.position); // Поворот текста к камере
+        }
+    });
     renderer.render(scene, camera);
 }
 
